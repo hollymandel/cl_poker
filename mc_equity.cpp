@@ -3,15 +3,20 @@
 #include <time.h>
 #include <set>
 #include <vector>
-
-
-//static const int num_cards = 7; // < 10 please
+#include <map>
 
 bool is_card(int v, char s){
 	if (v < 2 || v > 14) return false;
 	if (!(s=='s'||s=='h'||s=='d'||s=='c')) return false;
 	return true;
 }
+
+std::map<int,char> rank_encode = {
+	{14, 'a'}, {13, 'b'}, {12, 'c'}, {11, 'd'},
+	{10, 'e'}, {9, 'f'}, {8, 'g'}, {7, 'h'},
+	{6, 'i'}, {5, 'j'}, {4, 'k'}, {3, 'l'},
+	{2, 'm'}
+};
 
 class Card{
 private:
@@ -32,19 +37,15 @@ public:
 	char get_suit() const {return suit;}
 };
 
-bool operator<=(const Card& a, const Card& b){
-	return (a.get_value() <= b.get_value()) 
+// a full ordering on cards is required for sorting hand set, but suit order is not relevant to play
+bool operator<(const Card& a, const Card& b){
+	return (a.get_value() < b.get_value()) 
 		|| ((a.get_value() == b.get_value()) && (a.get_suit() < b.get_suit()));
 }
 
 bool operator==(const Card& a, const Card& b){
 	return (a.get_value() == b.get_value()) && (a.get_suit() == b.get_suit());
 }
-
-bool operator <(const Card& a, const Card& b){
-	return (a <= b) && !(a ==b);
-}
-
 
 class Hand{
 private:
@@ -119,37 +120,65 @@ int straight(const Hand h) {
 	return 0;
 }
 
-std::vector<int> tuples(const Hand h) {
+struct tuple{
+	int mult;
+	int value;
+	tuple(int m, int v){mult = m; value = v;};	
+};
+
+bool operator<(const tuple a, const tuple b){
+	return ((a.mult < b.mult) || (a.mult == b.mult) & (a.value < b.value));
+};
+
+
+std::vector<tuple> tuples(const Hand h) {
 	std::vector<int> nums;
 	for (auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
 		nums.push_back(itr->get_value());
 	}
-	std::vector<int> tups;
+	std::vector<tuple> tups;
 	for (auto num_itr = h.get_num_set()->begin(); num_itr != h.get_num_set()->end(); num_itr++){
-		tups.push_back(std::count(nums.begin(), nums.end(), *num_itr));
+		int this_count = std::count(nums.begin(), nums.end(), *num_itr);
+		tups.push_back(tuple(this_count, *num_itr));
 	}
+	sort(tups.begin(), tups.end());
 	return tups;
+}
+
+int high_card_value(const Hand h){
+	return *h.get_num_set()->rbegin();
 }
 
 const std::vector<char> Hand::best_hand() const{
 	const char get_flush = flush(*this);
 	if(get_flush != 'n'){
-		std::vector<Card> flush_hand;
+		// is it a straight flush?
+		std::vector<Card> flush_vect;
 		for (auto itr = this->get_set()->begin(); itr != this->get_set()->end(); itr++){
-			if (itr->get_suit() == get_flush){flush_hand.push_back(*itr);};
-			const int straight_flush = straight(flush_hand);
-			if (straight_flush){ return {'a'}; }
+			if (itr->get_suit() == get_flush){flush_vect.push_back(*itr);};
 		}
+		Hand flush_hand = Hand(flush_vect);
+		const int straight_flush = straight(flush_hand);
+		if (straight_flush){return {'a', rank_encode[straight_flush]};} 
+
+		// if not, flush is the best hand (assuming 7 cards, 5 card hands)
+		int flush_high = high_card_value(flush_hand);
+		return { 'd', rank_encode[flush_high] };
+	}
+	std::vector<tuple> tups = tuples(*this);
+	for(auto itr = tups.rbegin(); itr != tups.rend(); itr++){std::cout << itr->mult;};
+	if(tups.rbegin()->mult == 4){
+		std::cout << "congrats on 4 of a kind!";
 	}
 		
-		
+	
 	std::vector<char> v = {'a','b'};
 	return v;
 }
 
 int main(){
-	std::vector<int> a {10,11,12,13,14,2,3};
-	std::vector<char> b {'c','c','c','c','c','d','d'};
+	std::vector<int> a {2,2,2,2,3,4,5};
+	std::vector<char> b {'c','h','d','s','c','h','d'};
 	Hand x = Hand(a,b);
-	std::cout << x.best_hand()[0];
+	x.best_hand();
 }
