@@ -47,6 +47,7 @@ bool operator==(const Card& a, const Card& b){
 	return (a.get_value() == b.get_value()) && (a.get_suit() == b.get_suit());
 }
 
+
 class Hand{
 private:
 	std::set<Card> cc;
@@ -82,6 +83,24 @@ public:
 	const std::set<int> *get_num_set() const{return &num_set;}
 	const std::set<char> *get_suit_set() const{return &suit_set;}
 	const std::vector<char> best_hand() const; 
+	const int high_card_value() const{return *(num_set.rbegin());}
+};
+
+
+struct Tuple{
+	int mult;
+	int value;
+	Tuple(int m, int v){mult = m; value = v;};	
+	int kicker(Hand * h){
+		for (auto itr = h->get_num_set()->begin(); itr != h->get_num_set()->end(); itr++){
+			if (*itr != value){return *itr;};
+		}
+		return value;	
+	}
+};
+
+bool operator<(const Tuple a, const Tuple b){
+	return ((a.mult < b.mult) || (a.mult == b.mult) & (a.value < b.value));
 };
 
 
@@ -120,36 +139,24 @@ int straight(const Hand h) {
 	return 0;
 }
 
-struct tuple{
-	int mult;
-	int value;
-	tuple(int m, int v){mult = m; value = v;};	
-};
 
-bool operator<(const tuple a, const tuple b){
-	return ((a.mult < b.mult) || (a.mult == b.mult) & (a.value < b.value));
-};
-
-
-std::vector<tuple> tuples(const Hand h) {
+std::vector<Tuple> tuples(const Hand h) {
 	std::vector<int> nums;
 	for (auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
 		nums.push_back(itr->get_value());
 	}
-	std::vector<tuple> tups;
+	std::vector<Tuple> tups;
 	for (auto num_itr = h.get_num_set()->begin(); num_itr != h.get_num_set()->end(); num_itr++){
 		int this_count = std::count(nums.begin(), nums.end(), *num_itr);
-		tups.push_back(tuple(this_count, *num_itr));
+		tups.push_back(Tuple(this_count, *num_itr));
 	}
 	sort(tups.begin(), tups.end());
 	return tups;
 }
 
-int high_card_value(const Hand h){
-	return *h.get_num_set()->rbegin();
-}
 
 const std::vector<char> Hand::best_hand() const{
+	// is there a flush?
 	const char get_flush = flush(*this);
 	if(get_flush != 'n'){
 		// is it a straight flush?
@@ -162,23 +169,47 @@ const std::vector<char> Hand::best_hand() const{
 		if (straight_flush){return {'a', rank_encode[straight_flush]};} 
 
 		// if not, flush is the best hand (assuming 7 cards, 5 card hands)
-		int flush_high = high_card_value(flush_hand);
+		int flush_high = flush_hand.high_card_value();
 		return { 'd', rank_encode[flush_high] };
 	}
-	std::vector<tuple> tups = tuples(*this);
-	for(auto itr = tups.rbegin(); itr != tups.rend(); itr++){std::cout << itr->mult;};
+
+	// is there 4 of a kind? 
+	std::vector<Tuple> tups = tuples(*this);
 	if(tups.rbegin()->mult == 4){
-		std::cout << "congrats on 4 of a kind!";
+		char tup_value = tups.rbegin()->value;
+		return { 'b', rank_encode[tups.rbegin()->value], rank_encode[this->high_card_value()] };
 	}
-		
 	
+	// full house?
+	if((tups.rbegin()->mult == 3) & ((tups.rbegin()+1)->mult == 2)){
+		return { 'c', rank_encode[tups.rbegin()->value], rank_encode[(tups.rbegin()+1)->value] };
+	}
+
+	// unflush straight? 
+	int strt = straight(*this);
+	if(strt != 0){ return { 'e', rank_encode[strt] }; };
+	
+	// two pair?
+	if((tups.rbegin()->mult == 2) & ((tups.rbegin()+1)->mult == 2)){
+		return { 
+			'f', 
+			rank_encode[tups.rbegin()->value], 
+			rank_encode[(tups.rbegin()+1)->value],
+			rank_encode[
+		};
+	}
+	
+	// pair?
+	if(tups.rbegin()->mult == 2)
+
 	std::vector<char> v = {'a','b'};
 	return v;
 }
 
 int main(){
-	std::vector<int> a {2,2,2,2,3,4,5};
-	std::vector<char> b {'c','h','d','s','c','h','d'};
+	std::vector<int> a {10,11,12,13,14,2,2};
+	std::vector<char> b {'c','c','d','c','c','d','h'};
 	Hand x = Hand(a,b);
-	x.best_hand();
+	std::vector<char> best_hand = x.best_hand();
+	for (auto itr = best_hand.begin(); itr != best_hand.end(); itr++){std::cout << *itr;}
 }
