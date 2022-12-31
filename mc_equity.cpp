@@ -4,12 +4,20 @@
 #include <set>
 #include <vector>
 #include <map>
+#include <cstdlib>
+#include <time.h>
+#include <string>
 
-bool is_card(int v, char s){
+int DRAW_LEN = 7;
+int HAND_LEN = 5;
+
+bool is_card(int v, int s){
 	if (v < 2 || v > 14) return false;
-	if (!(s=='s'||s=='h'||s=='d'||s=='c')) return false;
+	if (s < 0 || s > 3) return false;
 	return true;
 }
+
+std::map<int,std::string> suit_map = {{0, "clubs"}, {1, "diamonds"}, {2, "hearts"}, {3, "spades"}};
 
 std::map<int,char> rank_encode = {
 	{14, 'a'}, {13, 'b'}, {12, 'c'}, {11, 'd'},
@@ -21,20 +29,20 @@ std::map<int,char> rank_encode = {
 class Card{
 private:
 	int value;
-	char suit;
+	int suit;
 public:
 	class InvalidCard{};
 	Card()
 	{
 	}
-	Card(int v, char s)
+	Card(int v, int s)
 	{	
 		if (!is_card(v,s)) throw InvalidCard();
 		value = v;
 		suit = s;
 	}
 	int get_value() const {return value;}
-	char get_suit() const {return suit;}
+	int get_suit() const {return suit;}
 };
 
 // a full ordering on cards is required for sorting hand set, but suit order is not relevant to play
@@ -52,7 +60,7 @@ class Hand{
 private:
 	std::set<Card> cc;
 	std::set<int> num_set;
-	std::set<char> suit_set;
+	std::set<int> suit_set;
 public:
 	class InvalidHand{};
 	Hand(std::vector<Card> cs)
@@ -64,7 +72,7 @@ public:
 			suit_set.insert(itr->get_suit());
 		}
 	}
-	Hand(std::vector<int> v, std::vector<char> c)
+	Hand(std::vector<int> v, std::vector<int> c)
 	{
 		int num_cards = v.size();
 		assert(c.size() == num_cards);
@@ -81,7 +89,7 @@ public:
 	}
 	const std::set<Card> *get_set() const{return &cc;}
 	const std::set<int> *get_num_set() const{return &num_set;}
-	const std::set<char> *get_suit_set() const{return &suit_set;}
+	const std::set<int> *get_suit_set() const{return &suit_set;}
 	const std::vector<char> best_hand() const; 
 	const int high_card_value() const{return *(num_set.rbegin());}
 };
@@ -91,12 +99,6 @@ struct Tuple{
 	int mult;
 	int value;
 	Tuple(int m, int v){mult = m; value = v;};	
-	int kicker(Hand * h){
-		for (auto itr = h->get_num_set()->begin(); itr != h->get_num_set()->end(); itr++){
-			if (*itr != value){return *itr;};
-		}
-		return value;	
-	}
 };
 
 bool operator<(const Tuple a, const Tuple b){
@@ -104,8 +106,8 @@ bool operator<(const Tuple a, const Tuple b){
 };
 
 
-char flush(const Hand h) {
-	char active_suit = 'c';
+int flush(const Hand h) {
+	int active_suit = 0;
 	int run_len = 0;
 	std::set<Card>::iterator itr;
 	for (itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
@@ -113,7 +115,7 @@ char flush(const Hand h) {
 		else{active_suit = itr->get_suit(); int run_len = 1;}
 		if (run_len == 5){return active_suit;}
 	}
-	return 'n';
+	return -1;
 }
 
 int straight(const Hand h) {
@@ -139,7 +141,6 @@ int straight(const Hand h) {
 	return 0;
 }
 
-
 std::vector<Tuple> tuples(const Hand h) {
 	std::vector<int> nums;
 	for (auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
@@ -154,11 +155,21 @@ std::vector<Tuple> tuples(const Hand h) {
 	return tups;
 }
 
+std::vector<int> kickers(const Hand h) {
+	std::vector<Tuple> tups = tuples(h);
+	std::vector<int> kickers;
+	for (auto itr = tups.rbegin(); itr != tups.rend(); itr++){
+		if (itr->mult == 1){kickers.push_back(itr->value);};
+	}
+	return kickers;
+	// note that in standard play you probably only want the first 1-3 elements of kickers
+}
+
 
 const std::vector<char> Hand::best_hand() const{
 	// is there a flush?
-	const char get_flush = flush(*this);
-	if(get_flush != 'n'){
+	const int get_flush = flush(*this);
+	if(get_flush != -1){
 		// is it a straight flush?
 		std::vector<Card> flush_vect;
 		for (auto itr = this->get_set()->begin(); itr != this->get_set()->end(); itr++){
@@ -173,11 +184,11 @@ const std::vector<char> Hand::best_hand() const{
 		return { 'd', rank_encode[flush_high] };
 	}
 
-	// is there 4 of a kind? 
+	// four of a kind? 
 	std::vector<Tuple> tups = tuples(*this);
 	if(tups.rbegin()->mult == 4){
 		char tup_value = tups.rbegin()->value;
-		return { 'b', rank_encode[tups.rbegin()->value], rank_encode[this->high_card_value()] };
+		return { 'b', rank_encode[tups.rbegin()->value], rank_encode[kickers(*this)[0]] };
 	}
 	
 	// full house?
@@ -189,27 +200,61 @@ const std::vector<char> Hand::best_hand() const{
 	int strt = straight(*this);
 	if(strt != 0){ return { 'e', rank_encode[strt] }; };
 	
+	// three of a kind?
+	if(tups.rbegin()->mult == 3){
+		char tup_value = tups.rbegin()->value;
+		return { 'f', rank_encode[tups.rbegin()->value], rank_encode[kickers(*this)[0]], rank_encode[kickers(*this)[1]] };
+	}
+
 	// two pair?
 	if((tups.rbegin()->mult == 2) & ((tups.rbegin()+1)->mult == 2)){
 		return { 
-			'f', 
+			'g', 
 			rank_encode[tups.rbegin()->value], 
 			rank_encode[(tups.rbegin()+1)->value],
-			rank_encode[
+			rank_encode[kickers(*this)[0]],	
 		};
 	}
 	
 	// pair?
-	if(tups.rbegin()->mult == 2)
+	if(tups.rbegin()->mult == 2){
+		return {
+			'h',
+			rank_encode[tups.rbegin()->value],
+			rank_encode[kickers(*this)[0]],
+			rank_encode[kickers(*this)[1]],
+			rank_encode[kickers(*this)[2]],
+		};
+	}
 
-	std::vector<char> v = {'a','b'};
-	return v;
+	// kickers only
+	if(tups.rbegin()->mult == 1){
+		std::vector<int> kicks = kickers(*this);
+		std::vector<char> kicks_encode = {'i'};
+		for (int i = 0; i < 5; i++){
+			kicks_encode.push_back(rank_encode[kicks[i]]);
+		}
+		return kicks_encode;
+	}
+
+	return {'x'};
 }
 
+Hand random_hand(){
+	srand(time(0));
+	std::vector<int> values;
+	std::vector<int> suits;
+	for(int i = 0; i < DRAW_LEN; i++){
+		values.push_back(rand() % 13 + 2); // card values from 2-14 (ace high)
+		suits.push_back(rand() % 4); // number of suits
+	}
+	try{return Hand(values, suits);}
+	catch(Hand::InvalidHand()){random_hand();}
+};
+
 int main(){
-	std::vector<int> a {10,11,12,13,14,2,2};
-	std::vector<char> b {'c','c','d','c','c','d','h'};
-	Hand x = Hand(a,b);
-	std::vector<char> best_hand = x.best_hand();
-	for (auto itr = best_hand.begin(); itr != best_hand.end(); itr++){std::cout << *itr;}
+	Hand get_hand = random_hand();
+	for(auto itr = get_hand.get_set()->begin(); itr != get_hand.get_set()->end(); itr++){
+		std::cout << itr->get_value() << " of " << suit_map[itr->get_suit()] << ".\n";
+	}
 }
