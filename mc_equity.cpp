@@ -10,10 +10,14 @@
 
 int DRAW_LEN = 7;
 int HAND_LEN = 5;
+int TABLE_SIZE = 5;
+int N_SUITS = 4;
+int MIN_VAL = 2;
+int MAX_VAL = 14;
 
 bool is_card(int v, int s){
-	if (v < 2 || v > 14) return false;
-	if (s < 0 || s > 3) return false;
+	if (v < MIN_VAL || v > MAX_VAL) return false;
+	if (s < 0 || s >= N_SUITS) return false;
 	return true;
 }
 
@@ -66,7 +70,7 @@ public:
 	Hand(std::vector<Card> cs)
 	{
 		for (auto itr=cs.begin(); itr < cs.end(); itr++){
-			if (cc.count(*itr)) { throw InvalidHand{}; }
+			if (cc.count(*itr)) { throw InvalidHand(); }
 			cc.insert(*itr); 
 			num_set.insert(itr->get_value());
 			suit_set.insert(itr->get_suit());
@@ -78,7 +82,7 @@ public:
 		assert(c.size() == num_cards);
 		for (int i=0; i < num_cards; i++) {
 			Card this_card(v[i],c[i]);
-			if (cc.count(this_card)) { throw InvalidHand{}; } 
+			if (cc.count(this_card)) { throw InvalidHand(); } 
 			cc.insert(this_card); 
 			num_set.insert(this_card.get_value());
 			suit_set.insert(this_card.get_suit());
@@ -92,6 +96,12 @@ public:
 	const std::set<int> *get_suit_set() const{return &suit_set;}
 	const std::vector<char> best_hand() const; 
 	const int high_card_value() const{return *(num_set.rbegin());}
+	
+	void append(Hand h){
+		std::vector<Card> joined_vect(h.get_set()->begin(), h.get_set()->end());
+		joined_vect.insert(joined_vect.begin(),this->cc.begin(), this->cc.end());
+		*this = Hand(joined_vect);
+	}
 };
 
 
@@ -240,21 +250,52 @@ const std::vector<char> Hand::best_hand() const{
 	return {'x'};
 }
 
-Hand random_hand(){
-	srand(time(0));
-	std::vector<int> values;
-	std::vector<int> suits;
-	for(int i = 0; i < DRAW_LEN; i++){
-		values.push_back(rand() % 13 + 2); // card values from 2-14 (ace high)
-		suits.push_back(rand() % 4); // number of suits
+std::vector<Card> random_distinct_cards(int n){
+	std::vector<Card> cs;
+	for(int i = 0; i < n; i++){
+		cs.push_back(Card(rand() % 13 + 2, rand() % 4));
 	}
-	try{return Hand(values, suits);}
-	catch(Hand::InvalidHand()){random_hand();}
+	try{Hand h = Hand(cs);}
+	catch(Hand::InvalidHand){return random_distinct_cards(n);}
+	return cs;
 };
 
+Hand random_hand(int n){
+	std::vector<Card> cs = random_distinct_cards(n);
+	try{return Hand(cs);}
+	catch(Hand::InvalidHand){return random_hand(n);}
+};
+
+
+std::vector<Card> villain_hands(int n_villains, std::vector<Card> shared_cards){
+	assert(shared_cards.size() <= TABLE_SIZE);
+	Hand h = Hand(shared_cards); // catch repeats in input shared_cards
+
+
+	while(TABLE_SIZE > shared_cards.size()){
+		std::vector<Card> full_table(shared_cards); 
+		std::vector<Card> table_remainder = random_distinct_cards(TABLE_SIZE - shared_cards.size()); 
+		full_table.insert(full_table.end(), table_remainder.begin(), table_remainder.end());
+		try{Hand h = Hand(full_table); shared_cards = full_table;}
+		catch(Hand::InvalidHand){std::cout << "oops";};
+	}
+
+	//std::vector<Hand> villain_pockets;
+	//for(int i = 0; i < n_villains; i++){
+	//	Hand pocket_draw = random_hand(2);
+	//	try{
+	//	villain_pockets.push_back(random_hand(2)
+	//}
+
+	return shared_cards;
+}
+
 int main(){
-	Hand get_hand = random_hand();
-	for(auto itr = get_hand.get_set()->begin(); itr != get_hand.get_set()->end(); itr++){
-		std::cout << itr->get_value() << " of " << suit_map[itr->get_suit()] << ".\n";
+	for(int i = 0; i < 0; i++){
+		std::vector<Card> shared_cards = random_distinct_cards(3);
+		std::vector<Card> vils = villain_hands(4, shared_cards);
+		for(auto itr = shared_cards.begin(); itr != shared_cards.end(); itr++){std::cout << itr->get_value() << itr->get_suit() << " ";}
+		std::cout << "\n";
+		for(auto itr = vils.begin(); itr != vils.end(); itr++){std::cout << itr->get_value() << itr->get_suit() << " ";}
 	}
 }
