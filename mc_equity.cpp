@@ -310,7 +310,7 @@ int main(){
 				std::cout << itr2->get_value() << "," << itr2->get_suit() << "  ";
 			}
 			std::cout << " :: ";
-		}
+		} 
 		std::cout << "\n";
 	}
 }
