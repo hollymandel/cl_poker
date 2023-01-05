@@ -10,6 +10,7 @@
 
 int DRAW_LEN = 7;
 int HAND_LEN = 5;
+int POCKET_SIZE = 2;
 int TABLE_SIZE = 5;
 int N_SUITS = 4;
 int MIN_VAL = 2;
@@ -67,6 +68,7 @@ private:
 	std::set<int> suit_set;
 public:
 	class InvalidHand{};
+	Hand(){}
 	Hand(std::vector<Card> cs)
 	{
 		for (auto itr=cs.begin(); itr < cs.end(); itr++){
@@ -267,7 +269,7 @@ Hand random_hand(int n){
 };
 
 
-std::vector<Card> villain_hands(int n_villains, std::vector<Card> shared_cards){
+std::vector<Hand> villain_hands(int n_villains, std::vector<Card> shared_cards){
 	assert(shared_cards.size() <= TABLE_SIZE);
 	Hand h = Hand(shared_cards); // catch repeats in input shared_cards
 
@@ -277,25 +279,38 @@ std::vector<Card> villain_hands(int n_villains, std::vector<Card> shared_cards){
 		std::vector<Card> table_remainder = random_distinct_cards(TABLE_SIZE - shared_cards.size()); 
 		full_table.insert(full_table.end(), table_remainder.begin(), table_remainder.end());
 		try{Hand h = Hand(full_table); shared_cards = full_table;}
-		catch(Hand::InvalidHand){std::cout << "oops";};
+		catch(Hand::InvalidHand){};
 	}
 
-	//std::vector<Hand> villain_pockets;
-	//for(int i = 0; i < n_villains; i++){
-	//	Hand pocket_draw = random_hand(2);
-	//	try{
-	//	villain_pockets.push_back(random_hand(2)
-	//}
+	std::vector<Hand> villain_pockets;
+	Hand shared_hand;
+	Hand draw;
+	for(int i = 0; i < n_villains; i++){
+		shared_hand = Hand(shared_cards);
+		while(true){
+			draw = random_hand(POCKET_SIZE);
+			try{shared_hand.append(random_hand(POCKET_SIZE)); break;}
+			catch(Hand::InvalidHand){}
+		}
+		villain_pockets.push_back(draw);
+	}
 
-	return shared_cards;
+	return villain_pockets;
 }
 
 int main(){
-	for(int i = 0; i < 0; i++){
+	for(int i = 0; i < 5; i++){
 		std::vector<Card> shared_cards = random_distinct_cards(3);
-		std::vector<Card> vils = villain_hands(4, shared_cards);
-		for(auto itr = shared_cards.begin(); itr != shared_cards.end(); itr++){std::cout << itr->get_value() << itr->get_suit() << " ";}
+		std::vector<Hand> vils = villain_hands(4, shared_cards);
+		std::cout << "Shared cards:   ";
+		for(auto itr = shared_cards.begin(); itr != shared_cards.end(); itr++){std::cout << itr->get_value() << "," << itr->get_suit() << "  ";}
+		std::cout << "\nVillain draws:   ";
+		for(auto itr = vils.begin(); itr != vils.end(); itr++){
+			for(auto itr2 = itr->get_set()->begin(); itr2 != itr->get_set()->end(); itr2++){
+				std::cout << itr2->get_value() << "," << itr2->get_suit() << "  ";
+			}
+			std::cout << " :: ";
+		}
 		std::cout << "\n";
-		for(auto itr = vils.begin(); itr != vils.end(); itr++){std::cout << itr->get_value() << itr->get_suit() << " ";}
 	}
 }
