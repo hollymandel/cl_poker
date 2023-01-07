@@ -1,3 +1,5 @@
+module cards;
+
 #include <iostream>
 #include <stdlib.h>
 #include <time.h>
@@ -24,11 +26,11 @@ bool is_card(int v, int s){
 
 std::map<int,std::string> suit_map = {{0, "clubs"}, {1, "diamonds"}, {2, "hearts"}, {3, "spades"}};
 
-std::map<int,char> rank_encode = {
-	{14, 'a'}, {13, 'b'}, {12, 'c'}, {11, 'd'},
-	{10, 'e'}, {9, 'f'}, {8, 'g'}, {7, 'h'},
-	{6, 'i'}, {5, 'j'}, {4, 'k'}, {3, 'l'},
-	{2, 'm'}
+std::map<int,std::string> rank_encode = {
+	{14, "14"}, {13, "13"}, {12, "12"}, {11, "11"},
+	{10, "10"}, {9, "09"}, {8, "08"}, {7, "07"},
+	{6, "06"}, {5, "05"}, {4, "04"}, {3, "03"},
+	{2, "02"}
 };
 
 class Card{
@@ -49,6 +51,13 @@ public:
 	int get_value() const {return value;}
 	int get_suit() const {return suit;}
 };
+
+std::ostream& operator<<(std::ostream& os, const Card& c)
+{
+    os << c.get_value() << " of " << suit_map[c.get_suit()] << "\n";
+    return os;
+}
+
 
 // a full ordering on cards is required for sorting hand set, but suit order is not relevant to play
 bool operator<(const Card& a, const Card& b){
@@ -96,7 +105,7 @@ public:
 	const std::set<Card> *get_set() const{return &cc;}
 	const std::set<int> *get_num_set() const{return &num_set;}
 	const std::set<int> *get_suit_set() const{return &suit_set;}
-	const std::vector<char> best_hand() const; 
+	const std::string best_hand() const; 
 	const int high_card_value() const{return *(num_set.rbegin());}
 	
 	void append(Hand h){
@@ -105,6 +114,14 @@ public:
 		*this = Hand(joined_vect);
 	}
 };
+
+std::ostream& operator<<(std::ostream& os, const Hand& h)
+{
+	for(auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
+		std::cout << *itr;
+	}
+	return os;
+}
 
 
 struct Tuple{
@@ -178,7 +195,7 @@ std::vector<int> kickers(const Hand h) {
 }
 
 
-const std::vector<char> Hand::best_hand() const{
+const std::string Hand::best_hand() const{
 	// is there a flush?
 	const int get_flush = flush(*this);
 	if(get_flush != -1){
@@ -189,70 +206,67 @@ const std::vector<char> Hand::best_hand() const{
 		}
 		Hand flush_hand = Hand(flush_vect);
 		const int straight_flush = straight(flush_hand);
-		if (straight_flush){return {'a', rank_encode[straight_flush]};} 
+		if (straight_flush){return "a" + rank_encode[straight_flush];} 
 
 		// if not, flush is the best hand (assuming 7 cards, 5 card hands)
 		int flush_high = flush_hand.high_card_value();
-		return { 'd', rank_encode[flush_high] };
+		return "i" + rank_encode[flush_high];
 	}
 
 	// four of a kind? 
 	std::vector<Tuple> tups = tuples(*this);
 	if(tups.rbegin()->mult == 4){
 		char tup_value = tups.rbegin()->value;
-		return { 'b', rank_encode[tups.rbegin()->value], rank_encode[kickers(*this)[0]] };
+		return "h" + rank_encode[tups.rbegin()->value] + rank_encode[kickers(*this)[0]];
 	}
 	
 	// full house?
 	if((tups.rbegin()->mult == 3) & ((tups.rbegin()+1)->mult == 2)){
-		return { 'c', rank_encode[tups.rbegin()->value], rank_encode[(tups.rbegin()+1)->value] };
+		return "g" + rank_encode[tups.rbegin()->value] + rank_encode[(tups.rbegin()+1)->value];
 	}
 
 	// unflush straight? 
 	int strt = straight(*this);
-	if(strt != 0){ return { 'e', rank_encode[strt] }; };
+	if(strt != 0){ return "e" + rank_encode[strt]; };
 	
 	// three of a kind?
 	if(tups.rbegin()->mult == 3){
 		char tup_value = tups.rbegin()->value;
-		return { 'f', rank_encode[tups.rbegin()->value], rank_encode[kickers(*this)[0]], rank_encode[kickers(*this)[1]] };
+		return "d" + rank_encode[tups.rbegin()->value] + rank_encode[kickers(*this)[0]] + rank_encode[kickers(*this)[1]];
 	}
 
 	// two pair?
 	if((tups.rbegin()->mult == 2) & ((tups.rbegin()+1)->mult == 2)){
-		return { 
-			'g', 
-			rank_encode[tups.rbegin()->value], 
-			rank_encode[(tups.rbegin()+1)->value],
-			rank_encode[kickers(*this)[0]],	
-		};
+		return "c" +  
+			rank_encode[tups.rbegin()->value] + 
+			rank_encode[(tups.rbegin()+1)->value] +
+			rank_encode[kickers(*this)[0]];
 	}
 	
 	// pair?
 	if(tups.rbegin()->mult == 2){
-		return {
-			'h',
-			rank_encode[tups.rbegin()->value],
-			rank_encode[kickers(*this)[0]],
-			rank_encode[kickers(*this)[1]],
-			rank_encode[kickers(*this)[2]],
-		};
+		return "b" + 
+			rank_encode[tups.rbegin()->value] +
+			rank_encode[kickers(*this)[0]] +
+			rank_encode[kickers(*this)[1]] +
+			rank_encode[kickers(*this)[2]];
 	}
 
 	// kickers only
 	if(tups.rbegin()->mult == 1){
 		std::vector<int> kicks = kickers(*this);
-		std::vector<char> kicks_encode = {'i'};
+		std::string kicks_encode = "a";
 		for (int i = 0; i < 5; i++){
-			kicks_encode.push_back(rank_encode[kicks[i]]);
+			kicks_encode.append(rank_encode[kicks[i]]);
 		}
 		return kicks_encode;
 	}
 
-	return {'x'};
+	return "0";
 }
 
 std::vector<Card> random_distinct_cards(int n){
+	assert(n >= 0);
 	std::vector<Card> cs;
 	for(int i = 0; i < n; i++){
 		cs.push_back(Card(rand() % 13 + 2, rand() % 4));
@@ -262,55 +276,47 @@ std::vector<Card> random_distinct_cards(int n){
 	return cs;
 };
 
-Hand random_hand(int n){
+Hand random_hand(int n, Hand exclude){
+	assert(n >= 0);
 	std::vector<Card> cs = random_distinct_cards(n);
-	try{return Hand(cs);}
-	catch(Hand::InvalidHand){return random_hand(n);}
+	try{
+		Hand draw = Hand(cs); // catch duplicates within the draw
+		exclude.append(draw); // catch duplicates with the exclude cards
+		return draw;
+	}
+	catch(Hand::InvalidHand){return random_hand(n, exclude);}
 };
 
 
-std::vector<Hand> villain_hands(int n_villains, std::vector<Card> shared_cards){
-	assert(shared_cards.size() <= TABLE_SIZE);
-	Hand h = Hand(shared_cards); // catch repeats in input shared_cards
-
-
-	while(TABLE_SIZE > shared_cards.size()){
-		std::vector<Card> full_table(shared_cards); 
-		std::vector<Card> table_remainder = random_distinct_cards(TABLE_SIZE - shared_cards.size()); 
-		full_table.insert(full_table.end(), table_remainder.begin(), table_remainder.end());
-		try{Hand h = Hand(full_table); shared_cards = full_table;}
-		catch(Hand::InvalidHand){};
-	}
-
-	std::vector<Hand> villain_pockets;
-	Hand shared_hand;
+std::vector<Hand> random_table(int n_villains, Hand exclude){
+	std::vector<Hand> random_hands;
 	Hand draw;
 	for(int i = 0; i < n_villains; i++){
-		shared_hand = Hand(shared_cards);
 		while(true){
-			draw = random_hand(POCKET_SIZE);
-			try{shared_hand.append(random_hand(POCKET_SIZE)); break;}
+			draw = random_hand(POCKET_SIZE, exclude);
+			try{exclude.append(draw); break;}
 			catch(Hand::InvalidHand){}
 		}
-		villain_pockets.push_back(draw);
+		random_hands.push_back(draw);
 	}
-
-	return villain_pockets;
+	return random_hands;
 }
 
 int main(){
-	for(int i = 0; i < 5; i++){
-		std::vector<Card> shared_cards = random_distinct_cards(3);
-		std::vector<Hand> vils = villain_hands(4, shared_cards);
-		std::cout << "Shared cards:   ";
-		for(auto itr = shared_cards.begin(); itr != shared_cards.end(); itr++){std::cout << itr->get_value() << "," << itr->get_suit() << "  ";}
-		std::cout << "\nVillain draws:   ";
-		for(auto itr = vils.begin(); itr != vils.end(); itr++){
-			for(auto itr2 = itr->get_set()->begin(); itr2 != itr->get_set()->end(); itr2++){
-				std::cout << itr2->get_value() << "," << itr2->get_suit() << "  ";
-			}
-			std::cout << " :: ";
-		} 
-		std::cout << "\n";
+	Hand table = random_hand(TABLE_SIZE, Hand());
+	std::cout << "The table is:\n" << table << "\n\n";
+	Hand running_total = table;
+	std::vector<Hand> vill_hands = random_table(3, running_total);
+	std::string best_yet = "0";
+	for(auto itr = vill_hands.begin(); itr != vill_hands.end(); itr++){
+		Hand vill_hand = table;
+		vill_hand.append(*itr);
+		std::string bh = vill_hand.best_hand();
+		std::cout << "appended villain hand:\n" << vill_hand << "\n\nbest hand: ";
+		for(auto itr = bh.begin(); itr != bh.end(); itr++){std::cout << *itr;}
+		std::cout << "\n\n";
+		if(bh > best_yet){best_yet = bh;}
 	}
+	std::cout << "\n\n\n\nbest hand was ";
+	for(auto itr = best_yet.begin(); itr != best_yet.end(); itr++){std::cout << *itr;}
 }
