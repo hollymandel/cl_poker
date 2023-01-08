@@ -299,22 +299,3 @@ std::vector<Hand> random_table(int n_villains, Hand exclude){
 	}
 	return random_hands;
 }
-
-int main(){
-	Hand table = random_hand(TABLE_SIZE, Hand());
-	std::cout << "The table is:\n" << table << "\n\n";
-	Hand running_total = table;
-	std::vector<Hand> vill_hands = random_table(3, running_total);
-	std::string best_yet = "0";
-	for(auto itr = vill_hands.begin(); itr != vill_hands.end(); itr++){
-		Hand vill_hand = table;
-		vill_hand.append(*itr);
-		std::string bh = vill_hand.best_hand();
-		std::cout << "appended villain hand:\n" << vill_hand << "\n\nbest hand: ";
-		for(auto itr = bh.begin(); itr != bh.end(); itr++){std::cout << *itr;}
-		std::cout << "\n\n";
-		if(bh > best_yet){best_yet = bh;}
-	}
-	std::cout << "\n\n\n\nbest hand was ";
-	for(auto itr = best_yet.begin(); itr != best_yet.end(); itr++){std::cout << *itr;}
-}
