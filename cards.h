@@ -106,10 +106,10 @@ public:
 	const std::string best_hand() const; 
 	const int high_card_value() const{return *(num_set.rbegin());}
 	
-	void append(Hand h){
+	Hand append(Hand h){
 		std::vector<Card> joined_vect(h.get_set()->begin(), h.get_set()->end());
 		joined_vect.insert(joined_vect.begin(),this->cc.begin(), this->cc.end());
-		*this = Hand(joined_vect);
+		return Hand(joined_vect);
 	}
 };
 
@@ -274,7 +274,7 @@ std::vector<Card> random_distinct_cards(int n){
 	return cs;
 };
 
-Hand random_hand(int n, Hand exclude){
+Hand random_hand(int n, Hand exclude = Hand()){
 	assert(n >= 0);
 	std::vector<Card> cs = random_distinct_cards(n);
 	try{
