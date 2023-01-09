@@ -24,14 +24,4 @@ float equity(Hand draw, Hand table, int n_villains, int n_samples = 1000){
 	}
 	assert((wins + losses) == n_samples);
 	return wins / (wins + losses);
-} 
-
-int main(){
-	srand(time(NULL));
-	Hand rand_draw = random_hand(2);
-	std::cout << "You drew " << rand_draw << "\n";
-	Hand rand_table = random_hand(3);
-	std::cout << "The flop is " << rand_table << "\n";
-	float pe = equity(rand_draw, rand_table, 1, 100);
-	std::cout << "Your equity is " << pe;
 }
