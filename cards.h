@@ -1,3 +1,6 @@
+#ifndef __cards__
+#define __cards__
+
 #include <iostream>
 #include <stdlib.h>
 #include <time.h>
@@ -182,13 +185,13 @@ std::vector<Tuple> tuples(const Hand h) {
 	return tups;
 }
 
-std::vector<int> kickers(const Hand h) {
+std::vector<int> kickers(const Hand h, int n = 1) {
 	std::vector<Tuple> tups = tuples(h);
 	std::vector<int> kickers;
 	for (auto itr = tups.rbegin(); itr != tups.rend(); itr++){
-		if (itr->mult == 1){kickers.push_back(itr->value);};
+		if (itr->mult <= n){kickers.push_back(itr->value);}; // n = 3 for four of a kind, otherwise 1
 	}
-	return kickers;
+	return kickers; 
 	// note that in standard play you probably only want the first 1-3 elements of kickers
 }
 
@@ -215,7 +218,7 @@ const std::string Hand::best_hand() const{
 	std::vector<Tuple> tups = tuples(*this);
 	if(tups.rbegin()->mult == 4){
 		char tup_value = tups.rbegin()->value;
-		return "h" + rank_encode[tups.rbegin()->value] + rank_encode[kickers(*this)[0]];
+		return "h" + rank_encode[tups.rbegin()->value] + rank_encode[kickers(*this, 3)[0]];
 	}
 	
 	// full house?
@@ -292,7 +295,7 @@ std::vector<Hand> random_table(int n_villains, Hand exclude){
 	for(int i = 0; i < n_villains; i++){
 		while(true){
 			draw = random_hand(POCKET_SIZE, exclude);
-			try{exclude.append(draw); break;}
+			try{exclude = exclude.append(draw); break;}
 			catch(Hand::InvalidHand){}
 		}
 		random_hands.push_back(draw);
@@ -301,3 +304,4 @@ std::vector<Hand> random_table(int n_villains, Hand exclude){
 }
 
 
+#endif //__cards__
