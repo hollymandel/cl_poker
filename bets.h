@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <time.h>
 #include <string>
+#include "random_player.h"
 
 int N_lb_buyin = 100;
 
@@ -31,10 +32,42 @@ public:
 	}
 };
 
-void round(int N_villains, int lb_position){
-	int stretch = 0;
-	int actor = lb_position;
-	std::vector<bool> fold(N_villains+1, false);
+class Round{
+private:
+	std::vector<Villain *> villains;
+	int N_villains;
+	int pot;
+	int action;
+	int little_blind;
+	Hand table;
+public:
+	Round(std::vector<Villain *> villains, int little_blind, int dealer){
+		villains = villains;
+		N_villains = villains.size();
+		action = dealer % (N_villains + 1);
+		little_blind = little_blind;
+	}
+	void pre_flop();
+	void flop();
+	void turn();
+	void river();
+};
+
+void Round::pre_flop(){
+	int N_calls = 0;
+	int bet = 0;
+	while(N_calls < N_villains){
+		if(action==0){
+			std::cout << "How much would you like to bet?\n\n";
+			std::cin >> bet;
+			pot += bet;
+		}
+		else{
+			villains[action]->act();
+		}
+		N_calls++;
+		action = (action + 1) % (N_villains + 1);
+	}
 }
 
 #endif //__bets__

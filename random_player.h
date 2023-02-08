@@ -1,10 +1,17 @@
+#ifndef __players__
+#define __players__
+
 #include "all_in_equity.h"
 #include <math.h> 
 
 class Villain{
 private: 
+	Hand draw;
 	int stack;
+	bool alive;
 public: 
+	Villain(int buyin, Hand draw){stack = buyin; alive = true; draw = draw;}
+    	virtual int act(){ return 0; }
 	int call(int bet){
 		stack -= bet;
 		return bet;
@@ -22,33 +29,24 @@ public:
 
 class Goldfish : public Villain{
 public:
-	void act(Hand draw, Hand table, int pot, int bet){
-		double get_equity = equity(draw, table);
-		if(bet / (pot + bet) > get_equity){
-			if(2*bet / (pot+bet) > get_equity){
-				raise(bet, round(get_equity * pot / (1-get_equity));
-				return;
+	Goldfish(int buyin, Hand draw) : Villain(buyin, draw){};
+	int act(Hand draw, Hand table, int pot, int bet, int n){
+		double get_equity = equity(draw, table, n);
+		if(bet / (pot + bet) < get_equity){
+			if(2*bet / (pot+bet) < get_equity){
+				return raise(bet, floor(get_equity * pot / (1-get_equity))-bet);
 			}
-			
+			return call(bet);
 		}
+		return fold();
 	}
 	
-}
-
-class Random_Player{
-private:
-	int stack;
-public:
-	Random_Player(int buy_in){stack = buy_in;}
-	bool call(){
-		if((rand() % 2)	> 0){return true;}
-		return false;
-	}
-	int bet(){
-		int bet_size = rand() % stack;
-		stack -= bet_size;
-		return bet_size;
-	}
-	int get_stack(){return stack;}
 };
 
+class Random_Player : public Villain{
+	int act(Hand draw, Hand table, int pot, int bet){
+		return fold();
+	}
+};
+
+#endif //__players__
