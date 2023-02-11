@@ -13,13 +13,22 @@
 
 int N_lb_buyin = 100;
 
+class Attrition{
+public:
+	Attrition(std::vector<Player *> ps){
+		for(int i = 0; i != ps.size(); i++){
+			if(ps[i]->check_alive()){std::cout << "Player " << i << " wins!\n\n\n\n";}
+		}
+	}
+};
+
 class Chips{
 private:
 	std::vector<int> stacks;
 	int pot;
 public:
-	Chips(int N_villains, int N_lb_buyin){
-		for(int i = 0; i != N_villains + 1; i++){stacks.push_back(N_lb_buyin);}
+	Chips(int N_Players, int N_lb_buyin){
+		for(int i = 0; i != N_Players + 1; i++){stacks.push_back(N_lb_buyin);}
 		pot = 0;
 	}
 	void bet(int player, int n_chips){
@@ -34,40 +43,60 @@ public:
 
 class Round{
 private:
-	std::vector<Villain *> villains;
-	int N_villains;
+	std::vector<Player *> players;
+	int N_players;
+	int N_alive;
 	int pot;
 	int action;
 	int little_blind;
 	Hand table;
+	Hand exclude;
 public:
-	Round(std::vector<Villain *> villains, int little_blind, int dealer){
-		villains = villains;
-		N_villains = villains.size();
-		action = dealer % (N_villains + 1);
-		little_blind = little_blind;
+	Round(std::vector<Player *> ps, int lb, int dealer){
+		players = ps;
+		Hand exclude = Hand();
+		for(auto itr = ps.begin(); itr != ps.end(); itr++){
+			exclude = exclude.append((*itr)->get_draw());
+		}
+
+		N_players = players.size();
+		N_alive = N_players;
+		action = dealer % N_players;
+		little_blind = lb;
+		pot = lb * 3;
+
+		try{std::cout << betting_round();}
+		catch(Attrition){return;}
+
+		Hand flop = random_hand(3, exclude);
 	}
+	int attrition();
+	int betting_round();
 	void pre_flop();
-	void flop();
-	void turn();
-	void river();
+	//void flop();
+	//void turn();
+	//void river();
 };
 
-void Round::pre_flop(){
+
+int Round::betting_round(){
 	int N_calls = 0;
-	int bet = 0;
-	while(N_calls < N_villains){
-		if(action==0){
-			std::cout << "How much would you like to bet?\n\n";
-			std::cin >> bet;
-			pot += bet;
+	int bet = 2*little_blind;
+	int decision = 0;
+	while(N_calls <= N_alive){
+		std::cout << "\n\n\n\naction: " << action << " - pot size: " 
+			<< pot << " - bet size: " << bet << " - calls: " << N_calls << "\n\n";
+		decision = players[action]->act(players[action]->get_draw(), table, pot, bet, N_players);
+		pot += decision;
+		if(decision == 0){
+			N_alive--;
+			if(N_alive == 1){throw Attrition(players);}
 		}
-		else{
-			villains[action]->act();
-		}
-		N_calls++;
-		action = (action + 1) % (N_villains + 1);
+		if(decision == bet){N_calls++;}
+		if(decision > bet){N_calls = 0;}
+		action = (action + 1) % N_players;
 	}
+	return 0;
 }
 
-#endif //__bets__
+#endif
