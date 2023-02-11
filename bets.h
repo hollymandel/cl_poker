@@ -16,28 +16,9 @@ int N_lb_buyin = 100;
 class Attrition{
 public:
 	Attrition(std::vector<Player *> ps){
-		for(int i = 0; i != ps.size(); i++){
-			if(ps[i]->check_alive()){std::cout << "Player " << i << " wins!\n\n\n\n";}
+		for(auto itr = ps.begin(); itr != ps.end(); itr++){
+			if((*itr)->check_alive()){std::cout << (*itr)->get_name() << " wins!\n\n\n\n";}
 		}
-	}
-};
-
-class Chips{
-private:
-	std::vector<int> stacks;
-	int pot;
-public:
-	Chips(int N_Players, int N_lb_buyin){
-		for(int i = 0; i != N_Players + 1; i++){stacks.push_back(N_lb_buyin);}
-		pot = 0;
-	}
-	void bet(int player, int n_chips){
-		if(n_chips > stacks[player]){
-			std::cout << "Invalid bet: insufficient chips.\n";
-			return;
-		}
-		stacks[player] -= n_chips;
-		pot += n_chips;
 	}
 };
 
@@ -63,28 +44,65 @@ public:
 		N_alive = N_players;
 		action = dealer % N_players;
 		little_blind = lb;
-		pot = lb * 3;
+		//pot = lb * 3;
+		pot = 100;
 
-		try{std::cout << betting_round();}
+		try{betting_round();}
 		catch(Attrition){return;}
 
 		Hand flop = random_hand(3, exclude);
+		table = table.append(flop);
+		exclude = exclude.append(flop);
+
+		try{betting_round();}
+		catch(Attrition){return;}
+
+		Hand turn = random_hand(1, exclude);
+		table = table.append(turn);
+		exclude = exclude.append(turn);
+
+		try{betting_round();}
+		catch(Attrition){return;}
+
+		Hand river = random_hand(1, exclude);
+		table = table.append(river);
+		exclude = exclude.append(river);
+
+		try{betting_round();}
+		catch(Attrition){return;}
+
+		std::vector<std::string> winners = table_winner();
+		std::cout << "The winner is ";
+		for(auto itr = winners.begin(); itr != winners.end(); itr++){std::cout << *itr;}		
 	}
-	int attrition();
-	int betting_round();
-	void pre_flop();
-	//void flop();
-	//void turn();
-	//void river();
+	void betting_round();
+	void best_hand();
+	std::vector<std::string> table_winner();
 };
 
+std::vector<std::string> Round::table_winner(){
+	std::string best_hand = "Z";
+	std::vector<std::string> winner;
+	for(auto itr = players.begin(); itr != players.end(); itr++){
+		Hand this_hand = table.append((*itr)->get_draw());
+		std::string this_best = this_hand.best_hand();
+		if(this_best.compare(best_hand) > 0){
+			winner =  { (*itr)->get_name() };
+			best_hand = this_best;
+		}
+		if(this_best.compare(best_hand) == 0){
+			winner.push_back((*itr)->get_name());
+		}
+	}	
+	return winner;
+}
 
-int Round::betting_round(){
+void Round::betting_round(){
 	int N_calls = 0;
-	int bet = 2*little_blind;
+	int bet = 0;
 	int decision = 0;
 	while(N_calls <= N_alive){
-		std::cout << "\n\n\n\naction: " << action << " - pot size: " 
+		std::cout << "\n\n\n\ntable: " << table << " - action: " << action << " - pot size: " 
 			<< pot << " - bet size: " << bet << " - calls: " << N_calls << "\n\n";
 		decision = players[action]->act(players[action]->get_draw(), table, pot, bet, N_players);
 		pot += decision;
@@ -96,7 +114,7 @@ int Round::betting_round(){
 		if(decision > bet){N_calls = 0;}
 		action = (action + 1) % N_players;
 	}
-	return 0;
 }
+
 
 #endif

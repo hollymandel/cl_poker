@@ -11,6 +11,7 @@ void valid_bet(int bet, int prev_bet = 0){
 	assert(prev_bet >= 0);
 	if(bet == 0){return;}
 	if(bet < prev_bet){throw InvalidBet();}
+	if(prev_bet == 0){return;}
 	if(bet % prev_bet != 0){throw InvalidBet();}
 }
 
@@ -20,8 +21,10 @@ protected:
 	Hand draw;
 	int stack;
 	bool alive;
+	std::string name;
 public: 
-	Player(int buyin, Hand in_draw){
+	Player(std::string nm, int buyin, Hand in_draw){
+		name = nm;
 		stack = buyin; 
 		alive = true; 
 		draw = in_draw;
@@ -37,6 +40,7 @@ public:
 		return 0;
 	}
 	Hand get_draw(){ return draw; }
+	std::string get_name(){ return name; }
 	bool check_alive(){ return alive; }
 		
 };

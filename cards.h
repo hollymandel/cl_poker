@@ -303,5 +303,4 @@ std::vector<Hand> random_table(int n_villains, Hand exclude){
 	return random_hands;
 }
 
-
 #endif //__cards__
