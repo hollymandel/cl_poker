@@ -17,7 +17,9 @@ class Attrition{
 public:
 	Attrition(std::vector<Player *> ps){
 		for(auto itr = ps.begin(); itr != ps.end(); itr++){
-			if((*itr)->check_alive()){std::cout << (*itr)->get_name() << " wins!\n\n\n\n";}
+			if((*itr)->check_alive()){
+				std::cout << (*itr)->get_name() << " wins!\n\n\n\n";
+			}
 		}
 	}
 };
@@ -27,12 +29,16 @@ private:
 	std::vector<Player *> players;
 	int N_players;
 	int N_alive;
+	int N_all_in;
 	int pot;
 	int action;
 	int little_blind;
 	Hand table;
 	Hand exclude;
 public:
+	class Show_Down(){
+		
+	}
 	Round(std::vector<Player *> ps, int lb, int dealer){
 		players = ps;
 		Hand exclude = Hand();
@@ -42,10 +48,10 @@ public:
 
 		N_players = players.size();
 		N_alive = N_players;
+		N_all_in = 0;
 		action = dealer % N_players;
 		little_blind = lb;
-		//pot = lb * 3;
-		pot = 100;
+		pot = lb * 3;
 
 		try{betting_round();}
 		catch(Attrition){return;}
@@ -56,6 +62,7 @@ public:
 
 		try{betting_round();}
 		catch(Attrition){return;}
+		catch(Shown_Down){return;}
 
 		Hand turn = random_hand(1, exclude);
 		table = table.append(turn);
@@ -99,19 +106,25 @@ std::vector<std::string> Round::table_winner(){
 
 void Round::betting_round(){
 	int N_calls = 0;
-	int bet = 0;
+	int total_bet = 0;
+	int last_raise = 0;
 	int decision = 0;
 	while(N_calls <= N_alive){
 		std::cout << "\n\n\n\ntable: " << table << " - action: " << action << " - pot size: " 
-			<< pot << " - bet size: " << bet << " - calls: " << N_calls << "\n\n";
-		decision = players[action]->act(players[action]->get_draw(), table, pot, bet, N_players);
-		pot += decision;
-		if(decision == 0){
-			N_alive--;
-			if(N_alive == 1){throw Attrition(players);}
+			<< pot << " - total round size: " << total_bet << " - calls: " << N_calls << "\n\n";
+		try{
+			decision = players[action]->act(players[action]->get_draw(), table, pot, total_bet, last_raise, N_players-1);
+			pot += decision;
+			if(decision == 0 & !players[action]->check_all_in()){N_alive--;}
+			if(decision == bet){N_calls++;}
+			if(decision > bet){N_calls = 0;}
 		}
-		if(decision == bet){N_calls++;}
-		if(decision > bet){N_calls = 0;}
+		catch(All_In()){N_all_in++; N_alive--;}
+		if(N_alive == 1){
+			if(N_all_in == 0){throw Attrition(players);}
+			throw Round::Show_Down();		
+		}
+		
 		action = (action + 1) % N_players;
 	}
 }
