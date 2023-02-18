@@ -14,16 +14,7 @@
 int N_players = 2;
 int N_lb_buyin = 100;
 
-class Attrition{
-public:
-	Attrition(std::vector<Player *> ps){
-		for(auto itr = ps.begin(); itr != ps.end(); itr++){
-			if((*itr)->check_alive()){
-				std::cout << (*itr)->get_name() << " wins!\n\n\n\n";
-			}
-		}
-	}
-};
+class Attrition{};
 
 class Heads_Up{
 private:
@@ -45,66 +36,74 @@ public:
 		Hand exclude = Hand();
 		little_blind = lb;
 		all_in = false;
+		Hand this_deal;
 
-		int loop_variable = dealer + 1;
+		int loop_variable = (dealer + 1) % N_players;
 		for(auto itr = ps.begin(); itr != ps.end(); itr++){
 			exclude = exclude.append((*itr)->get_draw());
 			pot += (*itr)->ante(loop_variable, little_blind);
 			loop_variable = (loop_variable+1) % N_players;
 		}
-
-		Hand this_deal;
+		
 		std::vector<int> deal_sizes = {0,3,1,1};
-		for(auto itr = deal_sizes.begin(); itr != deal_sizes.end(); itr++){
-			this_deal = random_hand(*itr, exclude);
+		std::vector<int> lrs = {lb,0,0,0};
+		for(int i = 0; i != 4; i++){
+			this_deal = random_hand(deal_sizes[i], exclude);
 			table = table.append(this_deal);
 			exclude = exclude.append(this_deal);
+
 			if(!all_in){
-				try{betting_round();}
+				try{betting_round(lrs[i]);}
 				catch(All_In){all_in = true;}
-				catch(Attrition){return;}
+				catch(Attrition){break;}
 			}
+			clear_all_bets();
 		}
 		std::vector<std::string> winners = table_winner();
-		std::cout << "The winner is ";
-		for(auto itr = winners.begin(); itr != winners.end(); itr++){std::cout << *itr << ", ";}		
+		return winners;		
 	}
-	void betting_round();
+	void betting_round(int lr = 0);
 	void best_hand();
 	std::vector<std::string> table_winner();
-	void showdown();
+	void clear_all_bets(){for(auto itr = players.begin(); itr != players.end(); itr++){(*itr)->clear_bet();}}
 };
 
 
-std::vector<std::string> Heads_Up::table_winner(){
+std::vector<int> Heads_Up::table_winner(){
 	std::string best_hand = "Z";
-	std::vector<std::string> winner;
-	for(auto itr = players.begin(); itr != players.end(); itr++){
-		Hand this_hand = table.append((*itr)->get_draw());
-		std::string this_best = this_hand.best_hand();
-		if(this_best.compare(best_hand) > 0){
-			winner =  { (*itr)->get_name() };
-			best_hand = this_best;
-		}
-		if(this_best.compare(best_hand) == 0){
-			winner.push_back((*itr)->get_name());
+	std::vector<int> winner;
+	for(int i = 0; i < N_players; i++){
+		if(players[i]->alive){
+			Hand this_hand = table.append(players[i]->get_draw());
+			std::string this_best = this_hand.best_hand();
+			if(this_best.compare(best_hand) > 0){
+				winner =  { i };
+				best_hand = this_best;
+			}
+			if(this_best.compare(best_hand) == 0){
+				winner.push_back(i);
+			}
 		}
 	}	
 	return winner;
 }
 
-void Heads_Up::betting_round(){
+void Heads_Up::betting_round(int lr){
 	
-	int total_bet = 0;
-	int last_raise = 0;
+	int total_bet = 2*lr;
+	int last_raise = lr;
+	int call_amt = lr;
 	int decision = 0;
 	int action = (dealer + 1) % N_players;
 	while(true){
-		std::cout << "\n\n\n\ntable: " << table << " - action: " << action << " - pot size: " 
-			<< pot << " - total round size: " << total_bet;
+		call_amt = total_bet - players[action]->get_in_this_round();
+		std::cout << "\n\n\n\ntable:\n " << table << "\n\n\n";
+		std::cout << "action: " << action << " - pot size: " << pot << " - total round size: " << total_bet << "\n\n" << 
+			"- call amount: " << call_amt << " - minimum raise " << call_amt + last_raise << "\n\n";
 		decision = players[action]->act(players[action]->get_draw(), table, pot, total_bet, last_raise, N_players-1);
 		pot += decision;
-		if(decision == last_raise){break;}
+		total_bet += decision;
+		if(decision == 0){break;}
 		last_raise = decision-last_raise;
 		action = (action + 1) % N_players;
 	}

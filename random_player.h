@@ -40,7 +40,7 @@ public:
 		if(all_in){throw All_In();}
 		int decision = decide(draw, table, pot, total_bet, last_raise, n);
 		valid_bet(decision, in_this_round, total_bet, last_raise);
-		if(decision == 0){throw Fold();}
+		if(decision == 0 & last_raise != 0){throw Fold();}
 		return stay_in(decision);
 
 	}	
@@ -58,18 +58,22 @@ public:
 	Hand get_draw(){ return draw; }
 	std::string get_name(){ return name; }
 	bool check_alive(){ return alive; }
-	bool check_all_in(){ return all_in; }	
+	bool check_all_in(){ return all_in; }
+	int get_in_this_round(){ return in_this_round; }	
 	int ante(int position, int lb){
-		if(position == 0){stack -= lb; return lb;}
-		if(position == 1){stack -= 2*lb; return 2*lb;}
+		if(position == 0){stack -= lb; in_this_round += lb; return lb;}
+		if(position == 1){stack -= 2*lb; in_this_round += 2*lb; return 2*lb;}
 		return 0;
-	}	
+	}
+	void clear_bet(){ in_this_round = 0; }
 };
 
 class Hero : public Player{
 public: 
 	using Player::Player;
 	int decide(Hand draw, Hand table, int pot, int total_bet, int last_raise, int n){
+		std::cout << "Your hand is\n" << draw << "\n\n";
+		std::cout << "Your equity is " << equity(draw, table, n) << "\n\n";
 		int decision;
 		try{
 			std::cout << "How much would you like to bet?\n\n";
@@ -81,6 +85,14 @@ public:
 			return decide(draw, table, pot, total_bet, last_raise, n);
 		}
 		return decision;
+	}
+};
+
+class Calling_Station : public Player{
+public:
+	using Player::Player;
+	int decide(Hand draw, Hand table, int pot, int total_bet, int last_raise, int n){
+		return total_bet - in_this_round;
 	}
 };
 

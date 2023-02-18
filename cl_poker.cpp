@@ -16,8 +16,8 @@ int main(){
 
 	Hero h = Hero("hero", BUYIN, vill_hands[0]);
 	plays.push_back(&h);
-	Goldfish g1 = Goldfish("fish1", BUYIN, vill_hands[1]);
+	Calling_Station g1 = Calling_Station("CS1", BUYIN, vill_hands[1]);
 	plays.push_back(&g1);
 
-	Heads_Up(plays, 1, 0);
+	Heads_Up(plays, 1, 1);
 }
