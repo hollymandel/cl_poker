@@ -9,8 +9,6 @@ int main(){
 
 	Hand my_pocket = random_hand(3);
 
-	std::cout << "\nWelcome to command-line heads-up poker.";
-
 	std::vector<Player *> plays;
 	std::vector<Hand> vill_hands = random_table(2, Hand());
 
@@ -19,5 +17,6 @@ int main(){
 	Calling_Station g1 = Calling_Station("CS1", BUYIN, vill_hands[1]);
 	plays.push_back(&g1);
 
-	Heads_Up(plays, 1, 1);
+	Heads_Up hu = Heads_Up(plays, 1, 1);
+	hu.play();
 }
