@@ -27,12 +27,13 @@ bool is_card(int v, int s){
 
 std::map<int,std::string> suit_map = {{0, "clubs"}, {1, "diamonds"}, {2, "hearts"}, {3, "spades"}};
 
-std::map<int,std::string> rank_encode = {
-	{14, "14"}, {13, "13"}, {12, "12"}, {11, "11"},
-	{10, "10"}, {9, "09"}, {8, "08"}, {7, "07"},
-	{6, "06"}, {5, "05"}, {4, "04"}, {3, "03"},
-	{2, "02"}
-};
+std::string rank_encode(int i){
+	int output_len = 3; // two characters + trailing 0
+    char buffer[output_len]; 
+	std::snprintf(buffer, output_len, "%02d", i); // snprintf prevents overflow
+	std::string str(buffer);
+    return str;
+}
 
 class Card{
 private:
@@ -43,9 +44,11 @@ public:
 	Card()
 	{
 	}
-	Card(int v, int s)
+	Card(int v, int s, bool validate = true)
 	{	
-		if (!is_card(v,s)) throw InvalidCard();
+		if(validate){
+			if (!is_card(v,s)) throw InvalidCard();
+		}
 		value = v;
 		suit = s;
 	}
@@ -74,8 +77,6 @@ bool operator==(const Card& a, const Card& b){
 class Hand{
 private:
 	std::set<Card> cc;
-	std::set<int> num_set;
-	std::set<int> suit_set;
 public:
 	class InvalidHand{};
 	Hand(){}
@@ -83,31 +84,25 @@ public:
 	{
 		for (auto itr=cs.begin(); itr < cs.end(); itr++){
 			if (cc.count(*itr)) { throw InvalidHand(); }
-			cc.insert(*itr); 
-			num_set.insert(itr->get_value());
-			suit_set.insert(itr->get_suit());
+			cc.insert(*itr);
 		}
 	}
-	Hand(std::vector<int> v, std::vector<int> c)
+	Hand(std::vector<int> v, std::vector<int> s)
 	{
 		int num_cards = v.size();
-		assert(c.size() == num_cards);
+		assert(s.size() == num_cards);
 		for (int i=0; i < num_cards; i++) {
-			Card this_card(v[i],c[i]);
+			Card this_card(v[i],s[i]);
 			if (cc.count(this_card)) { throw InvalidHand(); } 
 			cc.insert(this_card); 
-			num_set.insert(this_card.get_value());
-			suit_set.insert(this_card.get_suit());
 		}
 	}
 	Card get_card(int i) const{ 
 		return *std::next(cc.begin(), i); 
 	}
 	const std::set<Card> *get_set() const{return &cc;}
-	const std::set<int> *get_num_set() const{return &num_set;}
-	const std::set<int> *get_suit_set() const{return &suit_set;}
 	const std::string best_hand() const; 
-	const int high_card_value() const{return *(num_set.rbegin());}
+	const int high_card_value() const{return cc.rbegin()->get_value();}
 	
 	Hand append(Hand h){
 		std::vector<Card> joined_vect(h.get_set()->begin(), h.get_set()->end());
@@ -116,11 +111,8 @@ public:
 	}
 };
 
-std::ostream& operator<<(std::ostream& os, const Hand& h)
-{
-	for(auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
-		std::cout << *itr;
-	}
+std::ostream& operator<<(std::ostream& os, const Hand& h){
+	for(auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){std::cout << *itr;}
 	return os;
 }
 
@@ -135,52 +127,53 @@ bool operator<(const Tuple a, const Tuple b){
 	return ((a.mult < b.mult) || (a.mult == b.mult) & (a.value < b.value));
 };
 
+bool is_suit(Card c, int s){return c.get_suit() == s;}
 
 int flush(const Hand h) {
-	int active_suit = 0;
-	int run_len = 0;
-	std::set<Card>::iterator itr;
-	for (itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
-		if(itr->get_suit() == active_suit){run_len++;}
-		else{active_suit = itr->get_suit(); int run_len = 1;}
-		if (run_len == 5){return active_suit;}
+	for(int i = 0; i != 4; i++){
+		int this_count = count_if(h.get_set()->begin(), h.get_set()->end(), [i](Card c){return is_suit(c,i);});
+		if(this_count >= 5){return i;}
 	}
 	return -1;
 }
 
 int straight(const Hand h) {
 	std::set<int> nums;
-	std::set<int>::iterator num_itr;
-	std::set<Card>::iterator itr;
-	for (itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
-		nums.insert(itr->get_value());
+	for (auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
+		int this_value = itr->get_value();
+		nums.insert(this_value);
+		if(this_value == 14){nums.insert(1);} // allowing low aces
 	}
+	nums.insert(MAX_VAL + 2); // extra value to dump last real num
 	int run_len = 1;
 	int last_int = 0;
-	for (num_itr = nums.begin(); num_itr != nums.end(); num_itr++){
-		if(*num_itr == last_int + 1){
-			run_len++; last_int++;
-		}
+	for (auto num_itr = nums.begin(); num_itr != nums.end(); num_itr++){
+		if(*num_itr == last_int + 1){run_len++; last_int++;}
 		else{
 			if(run_len > 4){return last_int;}
 			run_len=1; last_int = *num_itr;
 		}
 		
 	}
-	if(run_len > 4){return last_int;}
 	return 0;
 }
 
 std::vector<Tuple> tuples(const Hand h) {
-	std::vector<int> nums;
-	for (auto itr = h.get_set()->begin(); itr != h.get_set()->end(); itr++){
-		nums.push_back(itr->get_value());
-	}
+	int last_num = 0;
+	int last_count = 0;
 	std::vector<Tuple> tups;
-	for (auto num_itr = h.get_num_set()->begin(); num_itr != h.get_num_set()->end(); num_itr++){
-		int this_count = std::count(nums.begin(), nums.end(), *num_itr);
-		tups.push_back(Tuple(this_count, *num_itr));
+	std::set<Card> cc(*h.get_set());
+	cc.insert(Card(15, 4, false)); // "highest" card added to dump out last real tuple
+	for (auto itr = cc.begin(); itr != cc.end(); itr++){
+		int this_value = itr->get_value();
+		if(this_value == last_num){last_count++;}
+		else{
+			tups.push_back(Tuple(last_count, last_num));
+			last_num = this_value; 
+			last_count = 1;
+		}
 	}
+	tups.erase(tups.begin()); // first tuple was (0,0)
 	sort(tups.begin(), tups.end());
 	return tups;
 }
@@ -207,50 +200,50 @@ const std::string Hand::best_hand() const{
 		}
 		Hand flush_hand = Hand(flush_vect);
 		const int straight_flush = straight(flush_hand);
-		if (straight_flush){return "a" + rank_encode[straight_flush];} 
+		if (straight_flush){return "a" + rank_encode(straight_flush);} 
 
 		// if not, flush is the best hand (assuming 7 cards, 5 card hands)
 		int flush_high = flush_hand.high_card_value();
-		return "i" + rank_encode[flush_high];
+		return "i" + rank_encode(flush_high);
 	}
 
 	// four of a kind? 
 	std::vector<Tuple> tups = tuples(*this);
 	if(tups.rbegin()->mult == 4){
 		char tup_value = tups.rbegin()->value;
-		return "h" + rank_encode[tups.rbegin()->value] + rank_encode[kickers(*this, 3)[0]];
+		return "h" + rank_encode(tups.rbegin()->value) + rank_encode(kickers(*this, 3)[0]);
 	}
 	
 	// full house?
 	if((tups.rbegin()->mult == 3) & ((tups.rbegin()+1)->mult == 2)){
-		return "g" + rank_encode[tups.rbegin()->value] + rank_encode[(tups.rbegin()+1)->value];
+		return "g" + rank_encode(tups.rbegin()->value) + rank_encode((tups.rbegin()+1)->value);
 	}
 
 	// unflush straight? 
 	int strt = straight(*this);
-	if(strt != 0){ return "e" + rank_encode[strt]; };
+	if(strt != 0){ return "e" + rank_encode(strt); };
 	
 	// three of a kind?
 	if(tups.rbegin()->mult == 3){
 		char tup_value = tups.rbegin()->value;
-		return "d" + rank_encode[tups.rbegin()->value] + rank_encode[kickers(*this)[0]] + rank_encode[kickers(*this)[1]];
+		return "d" + rank_encode(tups.rbegin()->value) + rank_encode(kickers(*this)[0]) + rank_encode(kickers(*this)[1]);
 	}
 
 	// two pair?
 	if((tups.rbegin()->mult == 2) & ((tups.rbegin()+1)->mult == 2)){
 		return "c" +  
-			rank_encode[tups.rbegin()->value] + 
-			rank_encode[(tups.rbegin()+1)->value] +
-			rank_encode[kickers(*this)[0]];
+			rank_encode(tups.rbegin()->value) + 
+			rank_encode((tups.rbegin()+1)->value) +
+			rank_encode(kickers(*this)[0]);
 	}
 	
 	// pair?
 	if(tups.rbegin()->mult == 2){
 		return "b" + 
-			rank_encode[tups.rbegin()->value] +
-			rank_encode[kickers(*this)[0]] +
-			rank_encode[kickers(*this)[1]] +
-			rank_encode[kickers(*this)[2]];
+			rank_encode(tups.rbegin()->value) +
+			rank_encode(kickers(*this)[0]) +
+			rank_encode(kickers(*this)[1]) +
+			rank_encode(kickers(*this)[2]);
 	}
 
 	// kickers only
@@ -258,7 +251,7 @@ const std::string Hand::best_hand() const{
 		std::vector<int> kicks = kickers(*this);
 		std::string kicks_encode = "a";
 		for (int i = 0; i < 5; i++){
-			kicks_encode.append(rank_encode[kicks[i]]);
+			kicks_encode.append(rank_encode(kicks[i]));
 		}
 		return kicks_encode;
 	}

@@ -99,7 +99,7 @@ int Heads_Up::betting_round(int live_blind_enabled){
 		if(players[action]->check_all_in()){return -2;}
 		call_amt = total_bet - players[action]->get_in_this_round();
 		if(verbose){print_state(action, total_bet, call_amt);}
-		decision = players[action]->act(players[action]->get_draw(), table, pot, total_bet, last_raise, N_players-1);
+		decision = players[action]->act(players[action]->get_draw(), table, pot, total_bet, last_raise, N_players-1); // TODO: OPPONENT STACK. ESP FOR ALL_IN!
 		if(verbose){std::cout << "\n\nPlayer " << players[action]->get_name() << " bet " << decision << ".\n\n";}
 		if(decision == call_amt){
 			if(live_blind_enabled & (action != dealer)){live_blind_enabled = false;}
